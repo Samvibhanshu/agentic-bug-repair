@@ -1,0 +1,13 @@
+{
+  "id": "16-sq-dlq-count",
+  "target": "mini-sqs",
+  "title": "messages get one receive too many before the dead-letter queue",
+  "kind": "operator",
+  "split": "test",
+  "truth": [
+    "dev.samridhi.sqs.MessageQueue#deadLettered(Msg,List)"
+  ],
+  "file": "src/main/java/dev/samridhi/sqs/MessageQueue.java",
+  "failingTests": 6,
+  "hang": false
+}

@@ -1,0 +1,13 @@
+{
+  "id": "05-rp-cheapest-parallel",
+  "target": "route-planner",
+  "title": "cost() returns the dearest of several parallel roads instead of the cheapest",
+  "kind": "operator",
+  "split": "dev",
+  "truth": [
+    "dev.samridhi.routes.Graph#cost(int,int)"
+  ],
+  "file": "src/main/java/dev/samridhi/routes/Graph.java",
+  "failingTests": 1,
+  "hang": false
+}

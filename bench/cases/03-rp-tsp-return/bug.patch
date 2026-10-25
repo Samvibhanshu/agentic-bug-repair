@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/routes/DeliveryPlanner.java
++++ b/src/main/java/dev/samridhi/routes/DeliveryPlanner.java
+@@ -93,7 +93,7 @@
+         int last = 0;
+         long bestTotal = Long.MAX_VALUE;
+         for (int j = 0; j < k; j++) {
+-            long total = best[full - 1][j] + m[j + 1][0];             // and drive home
++            long total = best[full - 1][j];             // and drive home
+             if (total < bestTotal) {
+                 bestTotal = total;
+                 last = j;

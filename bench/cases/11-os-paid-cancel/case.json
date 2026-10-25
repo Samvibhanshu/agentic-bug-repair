@@ -1,0 +1,13 @@
+{
+  "id": "11-os-paid-cancel",
+  "target": "order-service",
+  "title": "a paid order can no longer be cancelled",
+  "kind": "other",
+  "split": "dev",
+  "truth": [
+    "dev.samridhi.orders.OrderStatus#next()"
+  ],
+  "file": "src/main/java/dev/samridhi/orders/OrderStatus.java",
+  "failingTests": 2,
+  "hang": false
+}

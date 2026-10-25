@@ -1,0 +1,13 @@
+{
+  "id": "14-sq-dedup-window",
+  "target": "mini-sqs",
+  "title": "a deduplication entry survives one millisecond too long",
+  "kind": "operator",
+  "split": "test",
+  "truth": [
+    "dev.samridhi.sqs.MessageQueue#send(String,long,String,String)"
+  ],
+  "file": "src/main/java/dev/samridhi/sqs/MessageQueue.java",
+  "failingTests": 1,
+  "hang": false
+}

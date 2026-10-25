@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/routes/ShortestPaths.java
++++ b/src/main/java/dev/samridhi/routes/ShortestPaths.java
+@@ -94,7 +94,7 @@
+             settled++;
+             if (u == target) return new Path(walkBack(parent, target), dist[target], settled);
+             for (Graph.Road r : g.roadsFrom(u)) {
+-                if (!r.open || done[r.to]) continue;
++                if (r.open || done[r.to]) continue;
+                 long candidate = dist[u] + r.cost;
+                 if (candidate < dist[r.to]) {
+                     dist[r.to] = candidate;

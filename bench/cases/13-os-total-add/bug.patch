@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/orders/OrderService.java
++++ b/src/main/java/dev/samridhi/orders/OrderService.java
+@@ -49,7 +49,7 @@
+         List<OrderLine> lines = new ArrayList<>();                         // must not leave stock held by nobody
+         for (Map.Entry<String, Long> e : units.entrySet()) {
+             try {
+-                total = Math.addExact(total, Math.multiplyExact(catalog.price(e.getKey()), e.getValue()));
++                total = Math.addExact(total, Math.addExact(catalog.price(e.getKey()), e.getValue()));
+             } catch (ArithmeticException overflow) {
+                 throw new OrderException(VALIDATION, "order total too large");
+             }

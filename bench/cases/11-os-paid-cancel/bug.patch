@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/orders/OrderStatus.java
++++ b/src/main/java/dev/samridhi/orders/OrderStatus.java
+@@ -19,7 +19,7 @@
+     public Set<OrderStatus> next() {
+         return switch (this) {
+             case CREATED -> EnumSet.of(PAID, CANCELLED);
+-            case PAID -> EnumSet.of(SHIPPED, CANCELLED);
++            case PAID -> EnumSet.of(SHIPPED);
+             case SHIPPED -> EnumSet.of(DELIVERED);
+             case DELIVERED, CANCELLED -> EnumSet.noneOf(OrderStatus.class);
+         };

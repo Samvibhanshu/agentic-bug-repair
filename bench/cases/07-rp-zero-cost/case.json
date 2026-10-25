@@ -1,0 +1,13 @@
+{
+  "id": "07-rp-zero-cost",
+  "target": "route-planner",
+  "title": "zero-cost roads are rejected",
+  "kind": "operator",
+  "split": "dev",
+  "truth": [
+    "dev.samridhi.routes.Graph#addRoad(int,int,int)"
+  ],
+  "file": "src/main/java/dev/samridhi/routes/Graph.java",
+  "failingTests": 2,
+  "hang": false
+}

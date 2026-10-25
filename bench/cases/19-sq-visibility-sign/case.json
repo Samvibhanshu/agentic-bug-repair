@@ -1,0 +1,13 @@
+{
+  "id": "19-sq-visibility-sign",
+  "target": "mini-sqs",
+  "title": "a received message becomes visible in the past, so it is redelivered at once",
+  "kind": "operator",
+  "split": "dev",
+  "truth": [
+    "dev.samridhi.sqs.MessageQueue#deliver(Msg,long)"
+  ],
+  "file": "src/main/java/dev/samridhi/sqs/MessageQueue.java",
+  "failingTests": 12,
+  "hang": false
+}

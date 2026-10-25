@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/sqs/MessageQueue.java
++++ b/src/main/java/dev/samridhi/sqs/MessageQueue.java
+@@ -249,7 +249,7 @@
+ 
+     /** True (and the message removed) if it outlived the retention period. Measured from the FIRST send, as SQS does. */
+     private boolean expired(Msg m, long now) {
+-        if (now - m.firstSentAt < config.retentionMs()) return false;
++        if (now - m.firstSentAt <= config.retentionMs()) return false;
+         removeEverywhere(m);
+         return true;
+     }

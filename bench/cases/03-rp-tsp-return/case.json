@@ -1,0 +1,13 @@
+{
+  "id": "03-rp-tsp-return",
+  "target": "route-planner",
+  "title": "Held-Karp forgets the drive back to the depot",
+  "kind": "other",
+  "split": "dev",
+  "truth": [
+    "dev.samridhi.routes.DeliveryPlanner#exactTour(long[][])"
+  ],
+  "file": "src/main/java/dev/samridhi/routes/DeliveryPlanner.java",
+  "failingTests": 2,
+  "hang": false
+}

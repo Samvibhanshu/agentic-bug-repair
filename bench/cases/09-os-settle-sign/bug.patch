@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/orders/Inventory.java
++++ b/src/main/java/dev/samridhi/orders/Inventory.java
+@@ -82,7 +82,7 @@
+         try {
+             for (Map.Entry<String, Long> e : held.entrySet()) {
+                 Stock s = stock.get(e.getKey());
+-                s.reserved -= e.getValue();
++                s.reserved += e.getValue();
+                 if (sell) s.sold += e.getValue();
+                 else s.available += e.getValue();
+             }

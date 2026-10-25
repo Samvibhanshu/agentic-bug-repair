@@ -1,0 +1,13 @@
+{
+  "id": "08-os-reserve-exact",
+  "target": "order-service",
+  "title": "an order for exactly the remaining stock is refused",
+  "kind": "operator",
+  "split": "test",
+  "truth": [
+    "dev.samridhi.orders.Inventory#reserve(String,Map)"
+  ],
+  "file": "src/main/java/dev/samridhi/orders/Inventory.java",
+  "failingTests": 3,
+  "hang": false
+}

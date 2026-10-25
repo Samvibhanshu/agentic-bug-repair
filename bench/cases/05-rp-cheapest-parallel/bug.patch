@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/routes/Graph.java
++++ b/src/main/java/dev/samridhi/routes/Graph.java
+@@ -116,7 +116,7 @@
+     /** Cheapest open road from {@code from} to {@code to}, or -1 if there is none. */
+     public int cost(int from, int to) {
+         int best = -1;
+-        for (Road r : roadsFrom(from)) if (r.to == to && r.open && (best < 0 || r.cost < best)) best = r.cost;
++        for (Road r : roadsFrom(from)) if (r.to == to && r.open && (best < 0 || r.cost > best)) best = r.cost;
+         return best;
+     }
+ 

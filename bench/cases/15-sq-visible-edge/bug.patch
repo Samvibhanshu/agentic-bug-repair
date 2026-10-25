@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/sqs/MessageQueue.java
++++ b/src/main/java/dev/samridhi/sqs/MessageQueue.java
+@@ -193,7 +193,7 @@
+     private List<ReceivedMessage> receiveStandard(int max, List<Msg> toDeadLetter) {
+         long now = clock.nowMillis();
+         List<ReceivedMessage> out = new ArrayList<>();
+-        while (out.size() < max && !byVisibleAt.isEmpty() && byVisibleAt.first().visibleAt <= now) {
++        while (out.size() < max && !byVisibleAt.isEmpty() && byVisibleAt.first().visibleAt < now) {
+             Msg m = byVisibleAt.pollFirst();
+             if (expired(m, now) || deadLettered(m, toDeadLetter)) continue;  // already removed from every index
+             out.add(deliver(m, now));

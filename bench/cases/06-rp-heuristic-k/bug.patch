@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/routes/Heuristics.java
++++ b/src/main/java/dev/samridhi/routes/Heuristics.java
+@@ -18,7 +18,7 @@
+         for (int u = 0; u < g.size(); u++) {
+             for (Graph.Road r : g.roadsFrom(u)) {
+                 int d = Math.abs(g.x(r.from) - g.x(r.to)) + Math.abs(g.y(r.from) - g.y(r.to));
+-                if (d > 0) k = Math.min(k, (double) r.cost / d);
++                if (d > 0) k = Math.max(k, (double) r.cost / d);
+             }
+         }
+         return k == Double.POSITIVE_INFINITY ? 0 : k;

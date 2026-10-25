@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/orders/IdempotencyStore.java
++++ b/src/main/java/dev/samridhi/orders/IdempotencyStore.java
+@@ -28,7 +28,7 @@
+         Entry<T> mine = new Entry<>(fingerprint, new CompletableFuture<>());
+         Entry<T> existing = entries.putIfAbsent(key, mine);
+         if (existing != null) {
+-            if (!existing.fingerprint().equals(fingerprint)) {
++            if (existing.fingerprint().equals(fingerprint)) {
+                 throw new OrderException(OrderException.Code.IDEMPOTENCY_MISMATCH,
+                         "Idempotency-Key " + key + " was already used for a different request");
+             }

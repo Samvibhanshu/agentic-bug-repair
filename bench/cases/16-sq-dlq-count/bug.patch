@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/sqs/MessageQueue.java
++++ b/src/main/java/dev/samridhi/sqs/MessageQueue.java
+@@ -241,7 +241,7 @@
+ 
+     /** True (and the message removed here) if it has used up its deliveries and must go to the DLQ. */
+     private boolean deadLettered(Msg m, List<Msg> toDeadLetter) {
+-        if (config.maxReceiveCount() == 0 || m.receiveCount < config.maxReceiveCount()) return false;
++        if (config.maxReceiveCount() == 0 || m.receiveCount <= config.maxReceiveCount()) return false;
+         removeEverywhere(m);
+         toDeadLetter.add(m);
+         return true;

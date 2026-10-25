@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/routes/ShortestPaths.java
++++ b/src/main/java/dev/samridhi/routes/ShortestPaths.java
+@@ -51,7 +51,7 @@
+             if (u == target) return new Path(walkBack(parent, target), hops[target], settled);
+             for (Graph.Road r : g.roadsFrom(u)) {
+                 if (r.open && hops[r.to] < 0) {             // first time seen = fewest hops (BFS goes level by level)
+-                    hops[r.to] = hops[u] + 1;
++                    hops[r.to] = hops[u] + 2;
+                     parent[r.to] = u;
+                     queue.add(r.to);
+                 }

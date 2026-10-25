@@ -1,0 +1,13 @@
+{
+  "id": "09-os-settle-sign",
+  "target": "order-service",
+  "title": "shipping or cancelling grows the reserved count instead of shrinking it",
+  "kind": "operator",
+  "split": "dev",
+  "truth": [
+    "dev.samridhi.orders.Inventory#settle(String,boolean)"
+  ],
+  "file": "src/main/java/dev/samridhi/orders/Inventory.java",
+  "failingTests": 9,
+  "hang": false
+}

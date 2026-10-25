@@ -1,0 +1,13 @@
+{
+  "id": "20-sq-max-batch",
+  "target": "mini-sqs",
+  "title": "receive refuses a batch of exactly 10",
+  "kind": "operator",
+  "split": "test",
+  "truth": [
+    "dev.samridhi.sqs.MessageQueue#receive(int,long)"
+  ],
+  "file": "src/main/java/dev/samridhi/sqs/MessageQueue.java",
+  "failingTests": 16,
+  "hang": false
+}

@@ -1,0 +1,13 @@
+{
+  "id": "17-sq-retention",
+  "target": "mini-sqs",
+  "title": "messages are kept a millisecond past retention",
+  "kind": "operator",
+  "split": "dev",
+  "truth": [
+    "dev.samridhi.sqs.MessageQueue#expired(Msg,long)"
+  ],
+  "file": "src/main/java/dev/samridhi/sqs/MessageQueue.java",
+  "failingTests": 2,
+  "hang": false
+}

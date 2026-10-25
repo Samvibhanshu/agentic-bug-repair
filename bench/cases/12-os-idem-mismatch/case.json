@@ -1,0 +1,13 @@
+{
+  "id": "12-os-idem-mismatch",
+  "target": "order-service",
+  "title": "retries with the same key are rejected and different requests replayed",
+  "kind": "operator",
+  "split": "test",
+  "truth": [
+    "dev.samridhi.orders.IdempotencyStore#execute(String,String,Supplier)"
+  ],
+  "file": "src/main/java/dev/samridhi/orders/IdempotencyStore.java",
+  "failingTests": 8,
+  "hang": false
+}

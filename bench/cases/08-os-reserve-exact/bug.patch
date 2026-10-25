@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/orders/Inventory.java
++++ b/src/main/java/dev/samridhi/orders/Inventory.java
+@@ -51,7 +51,7 @@
+         try {
+             for (Map.Entry<String, Long> e : new TreeMap<>(unitsBySku).entrySet()) {
+                 Stock s = stock.get(e.getKey());
+-                if (s == null || s.available < e.getValue()) return false;      // nothing changed yet
++                if (s == null || s.available <= e.getValue()) return false;      // nothing changed yet
+             }
+             for (Map.Entry<String, Long> e : unitsBySku.entrySet()) {
+                 Stock s = stock.get(e.getKey());

@@ -1,0 +1,13 @@
+{
+  "id": "13-os-total-add",
+  "target": "order-service",
+  "title": "order totals add price and quantity instead of multiplying",
+  "kind": "other",
+  "split": "dev",
+  "truth": [
+    "dev.samridhi.orders.OrderService#doPlace(String,Map)"
+  ],
+  "file": "src/main/java/dev/samridhi/orders/OrderService.java",
+  "failingTests": 3,
+  "hang": false
+}

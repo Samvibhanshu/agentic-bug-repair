@@ -1,0 +1,13 @@
+{
+  "id": "01-rp-bfs-hops",
+  "target": "route-planner",
+  "title": "BFS counts two hops per road",
+  "kind": "operator",
+  "split": "dev",
+  "truth": [
+    "dev.samridhi.routes.ShortestPaths#bfs(Graph,int,int)"
+  ],
+  "file": "src/main/java/dev/samridhi/routes/ShortestPaths.java",
+  "failingTests": 1,
+  "hang": false
+}

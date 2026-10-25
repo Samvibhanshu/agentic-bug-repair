@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/routes/DeliveryPlanner.java
++++ b/src/main/java/dev/samridhi/routes/DeliveryPlanner.java
+@@ -143,7 +143,7 @@
+                     int[] candidate = best.clone();
+                     reverse(candidate, i, j);
+                     long c = tourCost(candidate, m);
+-                    if (c < bestCost) {
++                    if (c <= bestCost) {
+                         best = candidate;
+                         bestCost = c;
+                         improved = true;

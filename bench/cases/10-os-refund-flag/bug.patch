@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/orders/OrderService.java
++++ b/src/main/java/dev/samridhi/orders/OrderService.java
+@@ -112,7 +112,7 @@
+             if (to == OrderStatus.SHIPPED) inventory.commit(id);           // reserved units are now sold
+             if (to == OrderStatus.CANCELLED) inventory.release(id);        // back on the shelf
+             Map<String, Object> eventData = new LinkedHashMap<>(data);
+-            if (to == OrderStatus.CANCELLED) eventData.put("refund", current.status() == OrderStatus.PAID);
++            if (to == OrderStatus.CANCELLED) eventData.put("refund", current.status() != OrderStatus.PAID);
+             events.append(eventType, id, eventData);
+             return next;
+         });

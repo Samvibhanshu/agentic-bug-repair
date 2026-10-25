@@ -1,0 +1,13 @@
+{
+  "id": "15-sq-visible-edge",
+  "target": "mini-sqs",
+  "title": "a message due exactly now is not delivered until the next tick",
+  "kind": "operator",
+  "split": "dev",
+  "truth": [
+    "dev.samridhi.sqs.MessageQueue#receiveStandard(int,List)"
+  ],
+  "file": "src/main/java/dev/samridhi/sqs/MessageQueue.java",
+  "failingTests": 9,
+  "hang": false
+}

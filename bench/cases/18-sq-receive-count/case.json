@@ -1,0 +1,13 @@
+{
+  "id": "18-sq-receive-count",
+  "target": "mini-sqs",
+  "title": "receive count is never incremented, so nothing reaches the dead-letter queue",
+  "kind": "other",
+  "split": "test",
+  "truth": [
+    "dev.samridhi.sqs.MessageQueue#deliver(Msg,long)"
+  ],
+  "file": "src/main/java/dev/samridhi/sqs/MessageQueue.java",
+  "failingTests": 10,
+  "hang": false
+}

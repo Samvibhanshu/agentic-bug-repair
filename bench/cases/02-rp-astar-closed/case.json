@@ -1,0 +1,13 @@
+{
+  "id": "02-rp-astar-closed",
+  "target": "route-planner",
+  "title": "A* skips open roads and drives through closed ones",
+  "kind": "operator",
+  "split": "test",
+  "truth": [
+    "dev.samridhi.routes.ShortestPaths#aStar(Graph,int,int,Heuristic)"
+  ],
+  "file": "src/main/java/dev/samridhi/routes/ShortestPaths.java",
+  "failingTests": 9,
+  "hang": false
+}

@@ -1,0 +1,13 @@
+{
+  "id": "10-os-refund-flag",
+  "target": "order-service",
+  "title": "cancelling reports a refund for unpaid orders and none for paid ones",
+  "kind": "operator",
+  "split": "test",
+  "truth": [
+    "dev.samridhi.orders.OrderService#transition(String,OrderStatus,String,String,Map)"
+  ],
+  "file": "src/main/java/dev/samridhi/orders/OrderService.java",
+  "failingTests": 1,
+  "hang": false
+}

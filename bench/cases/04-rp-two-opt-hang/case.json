@@ -1,0 +1,13 @@
+{
+  "id": "04-rp-two-opt-hang",
+  "target": "route-planner",
+  "title": "twoOpt never terminates on equal-cost moves (hangs)",
+  "kind": "operator",
+  "split": "test",
+  "truth": [
+    "dev.samridhi.routes.DeliveryPlanner#twoOpt(int[],long[][])"
+  ],
+  "file": "src/main/java/dev/samridhi/routes/DeliveryPlanner.java",
+  "failingTests": 0,
+  "hang": true
+}

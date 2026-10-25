@@ -1,0 +1,11 @@
+--- a/src/main/java/dev/samridhi/sqs/MessageQueue.java
++++ b/src/main/java/dev/samridhi/sqs/MessageQueue.java
+@@ -234,7 +234,7 @@
+         if (m.receipt != null) byReceipt.remove(m.receipt);               // older handles stop working
+         m.receiveCount++;
+         m.receipt = UUID.randomUUID().toString();
+-        m.visibleAt = now + config.visibilityTimeoutMs();
++        m.visibleAt = now - config.visibilityTimeoutMs();
+         byReceipt.put(m.receipt, m);
+         return new ReceivedMessage(m.id, m.body, m.receipt, m.receiveCount, m.groupId);
+     }

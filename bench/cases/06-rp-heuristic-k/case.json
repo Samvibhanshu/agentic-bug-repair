@@ -1,0 +1,13 @@
+{
+  "id": "06-rp-heuristic-k",
+  "target": "route-planner",
+  "title": "the A* heuristic uses the largest cost per unit, so it over-estimates",
+  "kind": "other",
+  "split": "test",
+  "truth": [
+    "dev.samridhi.routes.Heuristics#safeCostPerUnit(Graph)"
+  ],
+  "file": "src/main/java/dev/samridhi/routes/Heuristics.java",
+  "failingTests": 2,
+  "hang": false
+}

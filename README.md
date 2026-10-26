@@ -211,18 +211,6 @@ I also planted 14 bugs in the code itself (weakened signature check, removed pol
 - Responses carry `X-Content-Type-Options: nosniff`; the dashboard is served with `default-src 'self'`.
 - A patch can only change existing non-test source files, so the agent cannot rewrite the tests, the build or the CI to make them pass.
 
-## What this is not
-
-Read this before putting it on a CV or in front of an interviewer:
-
-- **It is not SWE-bench-capable.** Without a model it fixes bugs that are one small edit away; with one it should do more, but that path (`AnthropicClient`, `LlmSynthesizer`) is tested only against stubs. I have not run it against the live API, so I make no claim about how well it works.
-- **Docker isolation has not been exercised.** `DockerSandbox` builds the command line and the tests check every flag, but the machine this was developed on had no Docker daemon, so no container has ever run. Test it yourself before trusting it with hostile code.
-- **A real GitHub pull request has not been opened.** The publisher is tested against a local remote and a fake API, not against github.com.
-- **Java only,** and only projects whose tests print `PASS`/`FAIL` lines the bundled way (parsing JUnit/Surefire reports is the obvious next step).
-- **Substitutions I made to keep it dependency-free**, versus the usual stack for this kind of project: the JDK compiler API instead of Tree-sitter; an in-memory graph instead of Neo4j or Postgres+AGE (fine to ~10⁵ nodes, no persistence); hashed vectors instead of neural embeddings; a hand-written state machine instead of LangGraph; a thread pool and bounded queue instead of Celery/Temporal/SQS/ECS; vanilla JS and my own diff view instead of Next.js and Monaco.
-- **No mock of the dashboard is hiding the backend:** everything on the screen comes from the JSON the server produces, and the screenshot above is a real run.
-- Token costs use placeholder prices (`CostModel`); they are $0 in mutation mode.
-
 ## Layout
 
 ```

@@ -4,6 +4,7 @@ import dev.samridhi.repair.agent.RepairConfig;
 import dev.samridhi.repair.agent.RepairPipeline;
 import dev.samridhi.repair.agent.RepairRun;
 import dev.samridhi.repair.agent.Verifier;
+import dev.samridhi.repair.coverage.Coverage;
 import dev.samridhi.repair.graph.CodeGraph;
 import dev.samridhi.repair.graph.JavaIndexer;
 import dev.samridhi.repair.localize.FaultLocalizer;
@@ -50,14 +51,23 @@ public final class Bench {
     public record RepairResult(String caseId, String kind, String split, boolean resolved, boolean restoredOriginal, int rounds,
                                int candidates, int sandboxRuns, long latencyMs, String outcome, String fix) {}
 
-    private static final Map<String, Weights> VARIANTS = new LinkedHashMap<>();
+    /** A localization setting: signal weights, and whether the spectrum uses measured coverage or the call graph. */
+    record Variant(Weights weights, boolean measured) {}
+
+    private static final Map<String, Variant> VARIANTS = new LinkedHashMap<>();
+    static final String FULL_BEFORE = "all signals, old weights (before)";
+    static final String TUNED_STATIC = "tuned weights + logic, call-graph coverage";
+    static final String FULL_MEASURED = "tuned weights + logic, measured coverage (default)";
 
     static {
-        VARIANTS.put("trace only (baseline)", Weights.TRACE_ONLY);
-        VARIANTS.put("text search only", Weights.TEXT_ONLY);
-        VARIANTS.put("trace + text (no graph)", Weights.NO_GRAPH);
-        VARIANTS.put("call-graph spectrum only", Weights.SPECTRUM_ONLY);
-        VARIANTS.put("full (graph + trace + text)", Weights.DEFAULT);
+        VARIANTS.put("trace only (baseline)", new Variant(Weights.TRACE_ONLY, false));
+        VARIANTS.put("text search only", new Variant(Weights.TEXT_ONLY, false));
+        VARIANTS.put("trace + text (no coverage)", new Variant(Weights.NO_GRAPH, false));
+        VARIANTS.put("spectrum only, call-graph coverage", new Variant(Weights.SPECTRUM_ONLY, false));
+        VARIANTS.put("spectrum only, measured coverage", new Variant(Weights.SPECTRUM_ONLY, true));
+        VARIANTS.put(FULL_BEFORE, new Variant(Weights.BEFORE, false));
+        VARIANTS.put(TUNED_STATIC, new Variant(Weights.DEFAULT, false));
+        VARIANTS.put(FULL_MEASURED, new Variant(Weights.DEFAULT, true));
     }
 
     private Bench() {}
@@ -97,11 +107,15 @@ public final class Bench {
         Path repo = materialize(c);
         try {
             CodeGraph graph = JavaIndexer.index(repo);
-            TestRun baseline = new Verifier(sandbox, command, limits).baseline(repo);
+            Verifier verifier = new Verifier(sandbox, command, limits);
+            TestRun baseline = verifier.baseline(repo);
+            Coverage coverage = verifier.coverage(repo, graph);
+            if (coverage.note() != null) System.err.println("   coverage: " + coverage.note());
             HybridRetriever retriever = new HybridRetriever(graph);
             Map<String, Integer> ranks = new LinkedHashMap<>();
-            for (Map.Entry<String, Weights> v : VARIANTS.entrySet()) {
-                List<Suspect> suspects = FaultLocalizer.localize(graph, baseline, retriever, v.getValue());
+            for (Map.Entry<String, Variant> v : VARIANTS.entrySet()) {
+                List<Suspect> suspects = FaultLocalizer.localize(graph, baseline, retriever, v.getValue().weights(),
+                        v.getValue().measured() ? coverage : null);
                 int rank = 0;
                 for (Suspect s : suspects) {
                     if (c.truth().contains(s.id())) {
@@ -120,19 +134,19 @@ public final class Bench {
     // -------------------------------------------------------------------------------------------------- tuning
 
     /** Everything needed to re-localize one case under many weightings without re-running its tests. */
-    record Prepared(Case c, CodeGraph graph, TestRun baseline, HybridRetriever retriever) {}
+    record Prepared(Case c, CodeGraph graph, TestRun baseline, HybridRetriever retriever, Coverage coverage) {}
 
-    static int rankOf(Prepared p, Weights w) {
-        for (Suspect s : FaultLocalizer.localize(p.graph(), p.baseline(), p.retriever(), w)) {
+    static int rankOf(Prepared p, Weights w, boolean measured) {
+        for (Suspect s : FaultLocalizer.localize(p.graph(), p.baseline(), p.retriever(), w, measured ? p.coverage() : null)) {
             if (p.c().truth().contains(s.id())) return s.rank();
         }
         return 0;
     }
 
-    static double mrr(List<Prepared> ps, Weights w) {
+    static double mrr(List<Prepared> ps, Weights w, boolean measured) {
         double sum = 0;
         for (Prepared p : ps) {
-            int r = rankOf(p, w);
+            int r = rankOf(p, w, measured);
             if (r > 0) sum += 1.0 / r;
         }
         return ps.isEmpty() ? 0 : sum / ps.size();
@@ -145,25 +159,29 @@ public final class Bench {
             Path repo = materialize(c);
             try {
                 CodeGraph g = JavaIndexer.index(repo);
-                TestRun base = new Verifier(sandbox, cfg.testCommand(), cfg.limits()).baseline(repo);
-                (c.split().equals("dev") ? dev : test).add(new Prepared(c, g, base, new HybridRetriever(g)));
+                Verifier v = new Verifier(sandbox, cfg.testCommand(), cfg.limits());
+                TestRun base = v.baseline(repo);
+                (c.split().equals("dev") ? dev : test).add(new Prepared(c, g, base, new HybridRetriever(g), v.coverage(repo, g)));
             } finally {
                 Fs.deleteTree(repo);
             }
         }
         double[] grid = {0, 0.25, 0.5, 1.0};
-        List<Object[]> scored = new ArrayList<>();
-        for (double a : grid) for (double b : grid) for (double c : grid) for (double d : grid) {
-            if (a + b + c + d == 0) continue;
-            Weights w = new Weights(a, b, c, d);
-            scored.add(new Object[] {w, mrr(dev, w)});
+        StringBuilder sb = new StringBuilder();
+        for (boolean measured : new boolean[] {false, true}) {
+            List<Object[]> scored = new ArrayList<>();
+            for (double a : grid) for (double b : grid) for (double c : grid) for (double d : grid) for (double e : grid) {
+                if (a + b + c + d == 0) continue;
+                Weights w = new Weights(a, b, c, d, e);
+                scored.add(new Object[] {w, mrr(dev, w, measured)});
+            }
+            scored.sort((x, y) -> Double.compare((double) y[1], (double) x[1]));
+            sb.append(measured ? "\nMEASURED coverage" : "CALL-GRAPH coverage").append(": dev split MRR by weights (spectrum, frame, proximity, text, logic):\n");
+            for (int i = 0; i < 8; i++) sb.append(String.format("  %s -> %.3f%n", scored.get(i)[0], (double) scored.get(i)[1]));
+            Weights best = (Weights) scored.get(0)[0];
+            sb.append(String.format("default weights: dev MRR %.3f, test MRR %.3f%n", mrr(dev, Weights.DEFAULT, measured), mrr(test, Weights.DEFAULT, measured)));
+            sb.append(String.format("best-on-dev %s: dev MRR %.3f, held-out test MRR %.3f%n", best, mrr(dev, best, measured), mrr(test, best, measured)));
         }
-        scored.sort((x, y) -> Double.compare((double) y[1], (double) x[1]));
-        StringBuilder sb = new StringBuilder("dev split MRR by weights (spectrum, frame, proximity, text):\n");
-        for (int i = 0; i < 8; i++) sb.append(String.format("  %s -> %.3f%n", scored.get(i)[0], (double) scored.get(i)[1]));
-        Weights best = (Weights) scored.get(0)[0];
-        sb.append(String.format("default weights: dev MRR %.3f, test MRR %.3f%n", mrr(dev, Weights.DEFAULT), mrr(test, Weights.DEFAULT)));
-        sb.append(String.format("best-on-dev %s: dev MRR %.3f, held-out test MRR %.3f%n", best, mrr(dev, best), mrr(test, best)));
         return sb.toString();
     }
 
@@ -242,9 +260,9 @@ public final class Bench {
             for (String split : List.of("dev", "test")) {
                 List<LocResult> part = loc.stream().filter(r -> r.split().equals(split)).toList();
                 if (part.isEmpty()) continue;
-                Map<String, Double> m = locMetrics(part, "full (graph + trace + text)");
+                Map<String, Double> m = locMetrics(part, FULL_MEASURED);
                 Map<String, Double> t = locMetrics(part, "trace only (baseline)");
-                sb.append(String.format("%n%s split (%d bugs): full top-1 %.0f%%, top-3 %.0f%%; trace-only top-1 %.0f%%, top-3 %.0f%%.%n", split,
+                sb.append(String.format("%n%s split (%d bugs): full with measured coverage top-1 %.0f%%, top-3 %.0f%%; trace-only top-1 %.0f%%, top-3 %.0f%%.%n", split,
                         part.size(), 100 * m.get("top1"), 100 * m.get("top3"), 100 * t.get("top1"), 100 * t.get("top3")));
             }
             sb.append('\n');

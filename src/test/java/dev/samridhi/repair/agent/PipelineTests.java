@@ -175,7 +175,7 @@ public class PipelineTests {
         RepairRun run = new RepairPipeline(cfg().withMaxIterations(1), new ProcessSandbox(), synth).run(repo, "policy");
         assertFalse(run.resolved());
         assertTrue(run.attempts().isEmpty(), "nothing was verified");
-        assertEquals(1, run.sandboxRuns(), "only the baseline ran");
+        assertEquals(2, run.sandboxRuns(), "only the baseline and the coverage run ran");
         assertTrue(synth.requests.get(1).feedback().contains("patches may not modify tests"), synth.requests.get(1).feedback());
     }
 
@@ -224,13 +224,13 @@ public class PipelineTests {
     @Test
     public void theFinalDiffIsVerifiedAgainAndAFailureThereStopsThePublication() throws Exception {
         Path repo = bugged("if (x > t) c++;", "if (x >= t) c++;");
-        // behaves for the baseline and the candidate, then reports a red suite for the clean-checkout re-verification
+        // behaves for the baseline, the coverage run and the candidate, then reports a red suite for the clean-checkout re-verification
         ProcessSandbox real = new ProcessSandbox();
         int[] calls = {0};
         dev.samridhi.repair.sandbox.Sandbox flaky = new dev.samridhi.repair.sandbox.Sandbox() {
             @Override
             public dev.samridhi.repair.sandbox.SandboxResult run(Path r, List<String> c, Limits l) throws IOException {
-                if (++calls[0] < 3) return real.run(r, c, l);
+                if (++calls[0] < 4) return real.run(r, c, l);               // baseline, coverage run, candidate
                 return new dev.samridhi.repair.sandbox.SandboxResult(1, "  FAIL  StatsTests.countAboveIsStrict  ->  java.lang.AssertionError: flaky\n  PASS  StatsTests.maxOfSeveral\n", false, false, false, 1);
             }
 
@@ -242,7 +242,7 @@ public class PipelineTests {
         Scripted synth = new Scripted(r -> List.of(candidate(r, STATS, "if (x >= t) c++;", "if (x > t) c++;", "right")));
         RepairRun run = new RepairPipeline(cfg(), flaky, synth).run(repo, "reverify");
         assertFalse(run.resolved());
-        assertEquals(3, calls[0]);
+        assertEquals(4, calls[0]);
         assertTrue(run.outcome().contains("re-verification"), run.outcome());
         assertTrue(run.diff() == null || run.diff().isEmpty());
         assertTrue(run.prMarkdown() == null || run.prMarkdown().isEmpty());

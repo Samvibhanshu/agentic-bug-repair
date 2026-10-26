@@ -66,17 +66,18 @@ public class BenchTests {
     public void localizationOfOneCaseRanksTheTrueMethodUnderEveryVariant() throws Exception {
         Bench.Case c = Bench.load(BENCH).stream().filter(x -> x.id().startsWith("01-")).findFirst().orElseThrow();
         Bench.LocResult r = Bench.localize(c, new ProcessSandbox(), new Limits(120_000, 2048, 128, 1 << 20), List.of("bash", "build.sh"));
-        assertEquals(5, r.rankByVariant().size());
-        int full = r.rankByVariant().get("full (graph + trace + text)");
+        assertEquals(8, r.rankByVariant().size());
+        int full = r.rankByVariant().get(Bench.FULL_MEASURED);
         assertTrue(full >= 1 && full <= 5, "ranks: " + r.rankByVariant());
         assertTrue(r.rankByVariant().get("trace only (baseline)") != 1 || full == 1, "the baseline gets no free lunch: " + r.rankByVariant());
     }
 
     @Test
     public void scoringAndReportingAreArithmeticallyRight() {
-        String v = "full (graph + trace + text)";
+        String v = Bench.FULL_MEASURED;
         Map<String, Integer> a = new java.util.LinkedHashMap<>(), b = new java.util.LinkedHashMap<>(), c = new java.util.LinkedHashMap<>(), d = new java.util.LinkedHashMap<>();
-        for (String k : List.of("trace only (baseline)", "text search only", "trace + text (no graph)", "call-graph spectrum only", v)) {
+        for (String k : List.of("trace only (baseline)", "text search only", "trace + text (no coverage)", "spectrum only, call-graph coverage",
+                "spectrum only, measured coverage", Bench.FULL_BEFORE, Bench.TUNED_STATIC, v)) {
             a.put(k, 1);
             b.put(k, 2);
             c.put(k, 4);
@@ -94,7 +95,7 @@ public class BenchTests {
                 new Bench.RepairResult("a", "operator", "dev", true, true, 1, 3, 5, 10_000, "ok", "replace > with >="),
                 new Bench.RepairResult("b", "other", "test", false, false, 4, 32, 40, 100_000, "no fix", ""));
         String md = Bench.report(loc, rep);
-        assertTrue(md.contains("### Fault localization (4 bugs)") && md.contains("| full (graph + trace + text) | 25% | 50% | 75% | 0.44 |"), md);
+        assertTrue(md.contains("### Fault localization (4 bugs)") && md.contains("| " + v + " | 25% | 50% | 75% | 0.44 |"), md);
         assertTrue(md.contains("**1 / 2 (50%)**") && md.contains("yes (original restored)") && md.contains("Bugs fixable by one small edit: 1 / 1"), md);
         Map<String, Object> j = Json.parseObject(Json.write(Bench.toJson(loc, rep)));
         assertEquals(4, ((List<?>) j.get("localization")).size());

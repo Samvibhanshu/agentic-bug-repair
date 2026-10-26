@@ -3,13 +3,13 @@
 [![build-and-test](https://github.com/Samvibhanshu/agentic-bug-repair/actions/workflows/ci.yml/badge.svg)](https://github.com/Samvibhanshu/agentic-bug-repair/actions/workflows/ci.yml)
 
 An agent that takes a Java repository with failing tests and tries to produce a **verified fix as a pull request**:
-it indexes the code into a graph, localizes the bug, proposes a small unified diff, runs every candidate in an
+it indexes the code into a graph, measures which methods each test runs, localizes the bug, proposes a small unified diff, runs every candidate in an
 isolated sandbox, feeds the failures back, and only publishes a diff that passes all tests on a clean checkout.
 It can run from the command line, or as a service that reacts to failed GitHub builds and shows its work on a
 dashboard. Java 17+, **no dependencies**: the JDK compiler API is the parser, `com.sun.net.httpserver` is the server.
 
-The design follows SWE-agent / SWE-bench style systems, built small enough to read in a sitting (about 5,700 lines
-of Java, 470 of browser code, 148 tests). See [What this is not](#what-this-is-not) before comparing it to them.
+The design follows SWE-agent / SWE-bench style systems, built small enough to read in a sitting (about 6,000 lines
+of Java, 470 of browser code, 154 tests).
 
 ![dashboard](docs/dashboard.png)
 
@@ -25,11 +25,11 @@ A real run on a seeded bug (`addRoad` rejected a cost of 0 because it checked `<
 $ java -cp out/main dev.samridhi.repair.Main repair ./buggy-checkout
 sandbox:     process sandbox: throwaway copy, empty environment, rlimits (memory, CPU, file size), process-tree watchdog, network namespace (no network)
 synthesizer: mutation (offline, deterministic)
-  INGEST     --READY--> LOCALIZE   (3575 ms)  2 failing, 17 passing; graph has 131 nodes and 335 edges
-  LOCALIZE   --SUSPECTS_FOUND--> SYNTHESIZE (56 ms)  top suspect Graph#addRoad (score 0.84)
-  SYNTHESIZE --CANDIDATES_READY--> VERIFY     (53 ms)  round 1: 8 candidate(s) from mutation (offline, deterministic)
-  VERIFY     --ALL_TESTS_PASS--> PUBLISH    (3507 ms)  round 1: 'replace `<=` with `<` (line 69)' passes every test
-  PUBLISH    --PUBLISHED--> RESOLVED   (2433 ms)  diff re-verified on a clean checkout; pull request prepared
+  INGEST     --READY--> LOCALIZE   (6620 ms)  2 failing, 17 passing; graph has 131 nodes and 335 edges; measured coverage for 19 tests
+  LOCALIZE   --SUSPECTS_FOUND--> SYNTHESIZE (74 ms)  top suspect Graph#addRoad (score 0.98)
+  SYNTHESIZE --CANDIDATES_READY--> VERIFY     (158 ms)  round 1: 8 candidate(s) from mutation (offline, deterministic)
+  VERIFY     --ALL_TESTS_PASS--> PUBLISH    (3613 ms)  round 1: 'replace `<=` with `<` (line 69)' passes every test
+  PUBLISH    --PUBLISHED--> RESOLVED   (2430 ms)  diff re-verified on a clean checkout; pull request prepared
 
 --- a/src/main/java/dev/samridhi/routes/Graph.java
 +++ b/src/main/java/dev/samridhi/routes/Graph.java
@@ -74,11 +74,19 @@ reciprocal rank fusion. Around a suspect, a breadth-first traversal (2 hops by d
 the fields it writes and the tests that reach it; that neighbourhood, with line-numbered source, is what the
 synthesizer sees.
 
-**Fault localization** (`localize/FaultLocalizer`). Each non-test method gets a score in 0..1 from four signals:
-*spectrum* (Ochiai suspiciousness using the static call graph as coverage: which methods do the failing tests reach
-and the passing ones do not), *stack frame* (position in the stack trace when the failure is a crash), *proximity*
-(call distance from the failing test) and *text* (retrieval match with the failure message). Weights are
-`0.5/0.5/0.25/0.05`.
+**Measured coverage** (`coverage/`). After the baseline run, an instrumented copy of the repository is built and
+tested once more: every method body starts with a probe (`repairprobe.RepairProbe.hit(id)`, on the same line as the
+opening brace so stack traces keep their line numbers, and after `super(...)`/`this(...)` in constructors), and each
+test reports which methods it actually executed. If the instrumented copy does not build or run, localization falls
+back to the call graph, which over-approximates: it counts every method a test *could* reach.
+
+**Fault localization** (`localize/FaultLocalizer`). Each non-test method gets a score in 0..1 from five signals:
+*spectrum* (Ochiai suspiciousness over the measured coverage: methods the failing tests execute and the passing ones
+do not), *stack frame* (position in the stack trace when the failure is a crash), *proximity* (call distance from the
+failing test), *text* (retrieval match with the failure message) and *logic* (how much decision-making and arithmetic
+the method contains; comments and strings ignored). The logic prior demotes setup methods, such as constructors and
+getters, that only the failing tests happen to run but where a logic bug cannot live. Weights are `1.0/0.25/0/0.25/0.25`,
+chosen on the dev split of the benchmark (below).
 
 **Patch synthesis** (`synth/`). Pluggable behind `PatchSynthesizer`:
 
@@ -152,47 +160,56 @@ time, so latencies are upper bounds.
 **Where is the bug?** Rank of the true buggy method among the suspects (an `AssertionError` has no useful stack, so the
 trace-only baseline is nearly blind; that is the realistic situation for logic bugs):
 
-| Signals | top-1 | top-3 | top-5 | MRR |
-|---|---|---|---|---|
-| stack trace only (baseline) | 15% | 15% | 15% | 0.15 |
-| text search only | 15% | 30% | 35% | 0.28 |
-| trace + text (no graph) | 25% | 30% | 40% | 0.34 |
-| call-graph spectrum only | 15% | 30% | 45% | 0.31 |
-| **full (graph + trace + text)** | 20% | **40%** | 40% | 0.34 |
+| Signals | top-1 | top-3 | top-5 | MRR | MRR dev | MRR test |
+|---|---|---|---|---|---|---|
+| stack trace only (baseline) | 15% | 15% | 15% | 0.15 | 0.10 | 0.20 |
+| text search only | 15% | 30% | 35% | 0.28 | 0.29 | 0.26 |
+| trace + text (no coverage) | 25% | 30% | 45% | 0.34 | 0.30 | 0.38 |
+| spectrum only, call-graph coverage | 15% | 30% | 45% | 0.31 | 0.30 | 0.31 |
+| spectrum only, measured coverage | 30% | 45% | 75% | 0.48 | 0.50 | 0.45 |
+| all signals, old weights (the previous default) | 20% | 40% | 40% | 0.34 | 0.32 | 0.36 |
+| tuned weights + logic prior, call-graph coverage | 40% | 70% | 80% | 0.57 | 0.57 | 0.57 |
+| **tuned weights + logic prior, measured coverage (default)** | **55%** | **70%** | **80%** | **0.66** | 0.72 | **0.61** |
+
+The weights were chosen by a grid search on the **dev split only** (`bench --mode tune`); the test split was not used
+to choose anything. On the held-out test split, MRR went from 0.36 (previous default) to 0.61.
 
 **Can it fix it?** (offline mutation synthesizer, no model, 3 self-correction rounds)
 
-- **4 of 20 resolved (20%)**, each verified on a clean checkout, each restoring the original source exactly.
-- 4 of 15 bugs that a single small edit can fix (operator, comparison or constant); **0 of 5** that need new code.
-- Resolved runs: median 35 s, p95 142 s. Two of the four were fixed in the first round, two needed the critic loop.
+| | before | now |
+|---|---|---|
+| Passes every test on a clean checkout | 4 / 20 | **9 / 20** (dev 5, test 4) |
+| ... and is actually correct (checked by hand) | 4 | **8** (7 restore the original source; 1 is equivalent to it) |
+| Median / p95 time of resolved runs | 35 s / 142 s | 73 s / 140 s |
 
 What the numbers do and do not say:
 
-- **Most failures here are localization failures.** The
-  synthesizer only mutates the top 3 suspects. In 9 of the 11 fixable bugs it did not repair, the true method was ranked
-  6th or lower (as low as 29th), so the right line was never tried; in the other 2 (`02`, `12`) it was in the top 3 and
-  no single mutation within the candidate budget passed. I did not investigate those two further.
-- A likely cause, which I have not tested: these repositories have large classes (`MessageQueue`, `Inventory`,
-  `OrderService`) and integration-style tests (HTTP, concurrency, whole order lifecycles), so one failing test reaches
-  dozens of methods and the spectrum signal cannot tell them apart. Fixing this properly (finer-grained coverage, a wider
-  mutation beam, a model in the loop) is the obvious next step; the numbers above are what the tool does today.
-- One real bug found by this benchmark: the process sandbox's network namespace had its loopback device switched off, so
-  `order-service`'s HTTP tests could never pass inside it. That is fixed (and tested), and the numbers above are from after the fix.
-  It did not change the repair count: the order-service bugs are still ranked too low to be tried.
-- The graph did **not** clearly help: trace + text without it has top-1 25% and MRR 0.34, the full variant 20% and 0.34;
-  the full variant is ahead at top-3 (40% vs 30%, two bugs). With 20 bugs none of these differences is significant.
-- Weights were grid-searched on the dev split only (`bench --mode tune`). The best dev weights (proximity switched off)
-  scored dev MRR 0.47 vs 0.32 for the defaults and **also did better on the held-out test split (0.49 vs 0.36)**.
-  I kept the defaults: many weight settings score close to the best on dev, 10 cases per split is too few to trust one of
-  them, and weights tuned on one set of repositories need not carry over to others.
+- **Measured coverage made the spectrum signal useful.** Alone, it went from MRR 0.31 (call-graph coverage) to 0.48:
+  the call graph counts every method a test *could* reach, so in large classes with integration-style tests the
+  failing tests "reach" dozens of methods and Ochiai cannot tell them apart.
+- **Most of the gain came from re-weighting, not from measured coverage.** With the tuned weights and the logic prior,
+  call-graph coverage already scores 0.57 on both splits; measured coverage adds 0.15 on dev but only 0.04 on test (one
+  bug moving up a place or two). With 10 bugs per split, that last difference is within noise.
+- **One "fix" is wrong, and the tests did not notice.** For `04-rp-two-opt-hang` (2-opt looped forever when two tours
+  cost the same) the agent changed `i < best.length - 1` to `i > best.length - 1`, which disables 2-opt entirely: no
+  more hang, every test passes, and the planner silently returns worse routes. The benchmark copy of the route
+  planner's tests checks that 2-opt terminates and never makes a tour worse, but not that it improves one. This is the
+  well-known overfitting problem of test-based repair, and the reason pull requests are drafts that a person approves.
+- **Where it still fails.** 0 of the 5 bugs that need new code were fixed (as expected of a one-edit synthesizer).
+  Of the 6 one-edit bugs not fixed, 5 have the true method ranked 4th to 11th, below the three suspects the
+  synthesizer mutates (all in `order-service` and `mini-sqs`, whose classes are large); in the sixth (`02`) it is ranked
+  first, and no single mutation within the candidate budget passed.
+- One real bug found earlier by this benchmark: the process sandbox's network namespace had its loopback device
+  switched off, so `order-service`'s HTTP tests could never pass inside it. That is fixed and tested.
 - The bugs were seeded by the author of the tool. They are plausible logic bugs, not a sample of real-world ones, and they are far
   easier than SWE-bench issues. **These figures are not comparable with SWE-bench scores.**
 - The model-backed path has no benchmark numbers: it was not run against the live API.
 
 ## Verification
 
-`./build.sh` runs 148 tests. Notable ones:
+`./build.sh` runs 154 tests. Notable ones:
 
+- coverage instrumentation is checked on real code: probes keep every line number, constructors that call `super(...)` still compile, and per-test coverage matches the methods each test is known to run;
 - the diff engine is checked against `git apply` in both directions (including a 120-case fuzz), and refuses path traversal and partial application;
 - the state machine's table is checked for reachability, terminal states, and an `ERROR` edge from every working state;
 - the pipeline is run end to end on a seeded bug, and with scripted synthesizers for: critic feedback reaching round 2, a regression being refused, a patch that edits a test being rejected before the sandbox, a partial fix in one file combined with the winning fix in another, a candidate that loops forever, a final diff that fails re-verification, an unreachable model API;
@@ -221,5 +238,6 @@ src/main/java/dev/samridhi/repair/
   patch/      unified diff create / parse / apply            pr/         dry-run and GitHub publishers
   service/    webhook, queue, HTTP API, run store            metrics/    pass@k, percentiles, cost
   bench/      benchmark harness                              trace/      test output and stack trace parser
+  coverage/   probe instrumentation, per-test coverage
 src/main/resources/web/   dashboard          bench/   targets, 20 cases with bug.patch, results
 ```

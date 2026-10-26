@@ -4,6 +4,7 @@ import dev.samridhi.repair.graph.CodeEdge;
 import dev.samridhi.repair.graph.CodeGraph;
 import dev.samridhi.repair.graph.CodeNode;
 import dev.samridhi.repair.graph.EdgeKind;
+import dev.samridhi.repair.coverage.Coverage;
 import dev.samridhi.repair.graph.JavaIndexer;
 import dev.samridhi.repair.localize.FaultLocalizer;
 import dev.samridhi.repair.localize.Suspect;
@@ -37,7 +38,8 @@ import java.util.concurrent.Future;
  * The repair agent. It drives {@link StateMachine#repairAgent()}:
  *
  * <pre>
- * INGEST    copy the repo, index the code graph, run the tests once (the baseline)
+ * INGEST    copy the repo, index the code graph, run the tests once (the baseline), and once more instrumented
+ *           (which methods each test executes)
  * LOCALIZE  rank suspect methods
  * SYNTHESIZE-VERIFY-CRITIC loop, at most 1 + maxIterations rounds:
  *     propose candidates, reject any that break PatchPolicy, verify the rest in sandboxes (a wave at a time, in rank
@@ -108,13 +110,18 @@ public final class RepairPipeline {
         List<String> failing = new ArrayList<>();
         for (FailureReport f : baseline.failed()) failing.add(f.summary());
         run.setBaseline(failing, baseline.passed().size());
+        // one more run, of an instrumented copy: which methods each test really executes (falls back to the graph if not)
+        Coverage coverage = baselineVerifier.coverage(pristine, graph);
+        run.addSandboxRuns(1);
         run.fire(RepairEvent.READY, baseline.failed().size() + " failing, " + baseline.passed().size() + " passing; graph has "
-                + graph.nodeCount() + " nodes and " + graph.edgeCount() + " edges");
+                + graph.nodeCount() + " nodes and " + graph.edgeCount() + " edges; "
+                + (coverage.isEmpty() ? "coverage from the call graph (" + coverage.note() + ")"
+                        : "measured coverage for " + coverage.methodsByTest().size() + " tests"));
 
         // -------------------------------------------------------------------------------------- LOCALIZE
         TestRun current = baseline;
         HybridRetriever retriever = new HybridRetriever(graph);
-        List<Suspect> suspects = FaultLocalizer.localize(graph, current, retriever, cfg.weights());
+        List<Suspect> suspects = FaultLocalizer.localize(graph, current, retriever, cfg.weights(), coverage);
         run.setSuspects(suspectsJson(graph, suspects));
         if (suspects.isEmpty()) {
             run.fire(RepairEvent.NO_SUSPECTS, "no method could be linked to the failures");
@@ -218,7 +225,7 @@ public final class RepairPipeline {
                 run.addPartial(keep.description() + " (" + keep.file() + ":" + keep.line() + ") fixed " + verdicts.get(best).fixed().size() + " test(s)");
                 graph = JavaIndexer.index(work);
                 retriever = new HybridRetriever(graph);
-                suspects = FaultLocalizer.localize(graph, current, retriever, cfg.weights());
+                suspects = FaultLocalizer.localize(graph, current, retriever, cfg.weights(), coverage);   // method ids are stable
                 if (suspects.isEmpty()) {
                     run.fire(RepairEvent.OUT_OF_BUDGET, "after a partial fix no suspect remains");
                     return;

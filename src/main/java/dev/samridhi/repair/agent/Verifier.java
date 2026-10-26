@@ -1,5 +1,8 @@
 package dev.samridhi.repair.agent;
 
+import dev.samridhi.repair.coverage.Coverage;
+import dev.samridhi.repair.coverage.Instrumenter;
+import dev.samridhi.repair.graph.CodeGraph;
 import dev.samridhi.repair.patch.UnifiedDiff;
 import dev.samridhi.repair.sandbox.Limits;
 import dev.samridhi.repair.sandbox.Sandbox;
@@ -37,6 +40,29 @@ public final class Verifier {
         SandboxResult r = sandbox.run(repo, command, limits);
         baselineMs = r.durationMs();
         return TestOutputParser.parse(r.output(), r.timedOut());
+    }
+
+    /**
+     * Runs an instrumented copy of {@code repo} once and reads which methods each test executed. Never throws for a
+     * repository it cannot instrument or run: it returns {@link Coverage#none} with the reason, and localization then
+     * falls back to the call graph.
+     */
+    public Coverage coverage(Path repo, CodeGraph graph) {
+        Path copy = null;
+        try {
+            copy = Files.createTempDirectory("repair-coverage-");
+            Fs.copyTree(repo, copy);
+            List<Instrumenter.Probe> probes = Instrumenter.instrument(copy);
+            if (probes.isEmpty()) return Coverage.none("no method bodies to instrument");
+            SandboxResult r = sandbox.run(copy, command, limits);
+            TestRun run = TestOutputParser.parse(r.output(), r.timedOut());
+            if (!run.compiled()) return Coverage.none("the instrumented copy did not compile");
+            return Coverage.parse(r.output(), probes, graph);
+        } catch (IOException | RuntimeException e) {
+            return Coverage.none("coverage failed: " + e.getMessage());
+        } finally {
+            if (copy != null) Fs.deleteTree(copy);
+        }
     }
 
     /** How long the unmodified test run took; candidates get a multiple of this as their timeout. */
